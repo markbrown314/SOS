@@ -74,12 +74,14 @@ static void *shm_create_region_data_seg(char* base, const char *key, int shm_siz
     }
 
     /* Write all current contents of the data segment to the file */
-    FILE *fp = fdopen(fd, "wb");
-    size_t ret = fwrite(base, shm_size, 1, fp);
-
-    if (ret == 0) {
-        fprintf(stderr, "mmap_init error fwrite\n");
-        exit(1);
+    ssize_t nt = 0;
+    ssize_t nw = 0;
+    while (nt < shm_size) {
+        if ((nw = write(fd, base + nt, shm_size)) == -1) {
+            fprintf(stderr, "mmap_init error write with errno(%s)\n", strerror(errno));
+            exit(1);
+        }
+        nt += nw;
     }
 
     if (ftruncate(fd, shm_size) == -1) {
@@ -92,8 +94,6 @@ static void *shm_create_region_data_seg(char* base, const char *key, int shm_siz
         fprintf(stderr, "mmap_init error mmap %s size %d\n", key, shm_size);
         exit(1);
     }
-
-    fclose(fp);
 
     return shm_base_addr;
 }
