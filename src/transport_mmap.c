@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <uuid/uuid.h>
 
 #define SHMEM_INTERNAL_INCLUDE
 #include "shmem.h"
@@ -30,24 +31,29 @@
 #include "transport_mmap.h"
 
 #define MPIDI_OFI_SHMGR_NAME_MAXLEN (128)
-#define MPIDI_OFI_SHMGR_NAME_PREFIX "/sos_shm_mmap_area"
+#define MPIDI_OFI_SHMGR_NAME_PREFIX "/sos_shmem"
+static uuid_t uuid;
 
 
 static void shm_create_key(char *key, size_t max_size, unsigned pe, size_t num) {
-    snprintf(key, max_size, "%s-%u-%zu", MPIDI_OFI_SHMGR_NAME_PREFIX, pe, num);
+    char uuid_str[UUID_STR_LEN];
+    uuid_unparse(uuid, uuid_str);
+    // check input key size
+    snprintf(key, max_size, "%s-%u-%zu-%s", MPIDI_OFI_SHMGR_NAME_PREFIX, pe, num, uuid_str);
+    printf("pe %d key generated '%s'\n", shmem_internal_my_pe, key);
 }
 
 
 static void *shm_create_region(char* base, const char *key, int shm_size) {
   if (shm_size == 0) return NULL;
 
-  shm_unlink(key);
   int fd = shm_open(key, O_RDWR | O_CREAT | O_TRUNC, 0666);
   if (fd == -1) {
       fprintf(stderr, "mmap_init error shm_open with errno(%s)\n", strerror(errno));
       exit(0);
   }
 
+  //shm_unlink(key);
   if (ftruncate(fd, shm_size) == -1) {
       fprintf(stderr, "mmap_init error ftruncate\n");
       exit(0);
@@ -66,7 +72,6 @@ static void *shm_create_region(char* base, const char *key, int shm_size) {
 static void *shm_create_region_data_seg(char* base, const char *key, int shm_size) {
     if (shm_size == 0) return NULL;
 
-    shm_unlink(key);
     int fd = shm_open(key, O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (fd == -1) {
         fprintf(stderr, "mmap_init data_seg error shm_open with errno(%s)\n", strerror(errno));
@@ -104,7 +109,7 @@ static void *shm_attach_region(char* base, const char *key, int shm_size) {
 
   int fd = shm_open(key, O_RDWR, 0);
   if (fd == -1) {
-      fprintf(stderr, "mmap_init error shm_open\n");
+      fprintf(stderr, "mmap_init attach error shm_open %s with errno(%s) pe %d\n", key, strerror(errno), shmem_internal_my_pe);
       exit(0);
   }
   void *shm_base_addr = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -139,6 +144,16 @@ shmem_transport_mmap_init(void)
     int ret;
     char key_prefix[MPIDI_OFI_SHMGR_NAME_MAXLEN-10];
     char key[MPIDI_OFI_SHMGR_NAME_MAXLEN];
+
+    /* generate uuid */
+    if (!shmem_internal_my_pe) {
+        uuid_generate(uuid);
+        shmem_runtime_put("mmap-uuid", uuid, sizeof(uuid));
+        shmem_runtime_barrier();
+    } else {
+        shmem_runtime_barrier();
+        shmem_runtime_get(0, "mmap-uuid", uuid, sizeof(uuid));
+    }
 
     /* setup data region */
     base = FIND_BASE(shmem_internal_data_base, page_size);
@@ -259,20 +274,24 @@ shmem_transport_mmap_fini(void)
     shm_create_key(key_prefix, MPIDI_OFI_SHMGR_NAME_MAXLEN-10, shmem_internal_my_pe, 1);
     snprintf(key, MPIDI_OFI_SHMGR_NAME_MAXLEN, "%s-data", key_prefix);
 
+#if 0
     ret = shm_unlink(key);
     if (ret != 0) {
         RETURN_ERROR_MSG("could not get data segment: %s\n", \
                          shmem_util_strerror(errno, errmsg, 256));
     }
+#endif
 
     shm_create_key(key_prefix, MPIDI_OFI_SHMGR_NAME_MAXLEN-10, shmem_internal_my_pe, 2);
     snprintf(key, MPIDI_OFI_SHMGR_NAME_MAXLEN, "%s-heap", key_prefix);
 
+#if 0
     ret = shm_unlink(key);
     if (ret != 0) {
         RETURN_ERROR_MSG("could not get heap segment: %s\n", \
                          shmem_util_strerror(errno, errmsg, 256));
     }
+#endif
 
     if (NULL != shmem_transport_mmap_peers) {
         for (i = 0 ; i < shmem_internal_num_pes; ++i) {
