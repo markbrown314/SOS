@@ -350,8 +350,10 @@ int shmem_transport_fini(void)
         ucp_rkey_destroy(shmem_transport_peers[i].heap_rkey);
         ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep,
                                                    UCP_EP_CLOSE_MODE_FLUSH);
-        shmem_transport_ucx_complete_op(pstatus);
-        //free(shmem_transport_peers[i].addr);
+        if (UCS_PTR_IS_PTR(pstatus)) {
+            shmem_transport_ucx_complete_op(pstatus);
+        }
+        free(shmem_transport_peers[i].addr);
     }
 
     free(shmem_transport_peers);
