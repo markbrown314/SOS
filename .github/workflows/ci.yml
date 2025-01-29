@@ -541,7 +541,7 @@ jobs:
           cd repos/ucx
           ./autogen.sh
           mkdir build; cd build
-          ../configure --prefix=${UCX_INSTALL_DIR} --enable-mt --disable-numa --without-java
+          ../configure --prefix=${UCX_INSTALL_DIR} --enable-mt --disable-numa --without-java --enable-debug --enable-logging --enable-debug-data
           make -j
           make install
 
@@ -554,6 +554,7 @@ jobs:
           ../configure --prefix=${SOS_INSTALL_DIR} --with-ucx=${UCX_INSTALL_DIR} ${{ matrix.sos_config }}
           make -j
           make install
+          nm ${UCX_INSTALL_DIR}/ucx/lib/libucs.so.0
       - name: Test SOS (${{ matrix.sos_config }})
         run: |
           cd build
