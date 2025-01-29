@@ -258,6 +258,8 @@ int shmem_transport_startup(void)
     shmem_transport_peers = malloc(shmem_internal_num_pes *
                                    sizeof(shmem_transport_peer_t));
 
+    memset(shmem_transport_peers, 0, shmem_internal_num_pes * sizeof(shmem_transport_peer_t));
+
     /* Build connection table to each peer */
     for (i = 0; i < shmem_internal_num_pes; i++) {
         ucs_status_t status;

@@ -557,7 +557,6 @@ jobs:
       - name: Test SOS (${{ matrix.sos_config }})
         run: |
           cd build
-          nm ${UCX_INSTALL_DIR}/lib/libucs.so.0
           make check TESTS= -j
           SHMEM_DEBUG=1 SHMEM_INFO=1 make VERBOSE=1 TEST_RUNNER="${SOS_PM} -np 2" check
           cat modules/tests-sos/test/unit/hello.log
