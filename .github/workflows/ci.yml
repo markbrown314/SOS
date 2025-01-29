@@ -554,9 +554,9 @@ jobs:
           ../configure --prefix=${SOS_INSTALL_DIR} --with-ucx=${UCX_INSTALL_DIR} ${{ matrix.sos_config }}
           make -j
           make install
-          nm ${UCX_INSTALL_DIR}/ucx/lib/libucs.so.0
       - name: Test SOS (${{ matrix.sos_config }})
         run: |
+          nm ${UCX_INSTALL_DIR}/ucx/lib/libucs.so.0
           cd build
           make check TESTS= -j
           SHMEM_DEBUG=1 SHMEM_INFO=1 make VERBOSE=1 TEST_RUNNER="${SOS_PM} -np 2" check
