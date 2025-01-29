@@ -257,7 +257,6 @@ int shmem_transport_startup(void)
 
     shmem_transport_peers = malloc(shmem_internal_num_pes *
                                    sizeof(shmem_transport_peer_t));
-
     memset(shmem_transport_peers, 0, shmem_internal_num_pes * sizeof(shmem_transport_peer_t));
 
     /* Build connection table to each peer */
@@ -274,6 +273,7 @@ int shmem_transport_startup(void)
 
         len = shmem_transport_peers[i].addr_len;
         shmem_transport_peers[i].addr = malloc(len);
+        memset(shmem_transport_peers[i].addr, 0, len);
         addr_bytes = (uint8_t*) shmem_transport_peers[i].addr;
 
         for (size_t chunk = 0; chunk < len; chunk += RUNTIME_ADDR_CHUNK) {
@@ -299,6 +299,7 @@ int shmem_transport_startup(void)
         ret = shmem_runtime_get(i, "data_rkey_len", &rkey_len, sizeof(size_t));
         if (ret) RAISE_ERROR_MSG("Runtime get of UCX data rkey length failed (PE %d, ret %d)\n", i, ret);
         rkey = malloc(rkey_len);
+        memset(rkey, 0, rkey_len);
         if (rkey == NULL) RAISE_ERROR_MSG("Out of memory, allocating rkey buffer (len = %zu)\n", rkey_len);
         ret = shmem_runtime_get(i, "data_rkey", rkey, rkey_len);
         if (ret) RAISE_ERROR_MSG("Runtime get of UCX data rkey failed (PE %d, ret %d)\n", i, ret);
@@ -309,6 +310,7 @@ int shmem_transport_startup(void)
         ret = shmem_runtime_get(i, "heap_rkey_len", &rkey_len, sizeof(size_t));
         if (ret) RAISE_ERROR_MSG("Runtime get of UCX heap rkey length failed (PE %d, ret %d)\n", i, ret);
         rkey = malloc(rkey_len);
+        memset(rkey, 0, rkey_len);
         if (rkey == NULL) RAISE_ERROR_MSG("Out of memory, allocating rkey buffer (len = %zu)\n", rkey_len);
         ret = shmem_runtime_get(i, "heap_rkey", rkey, rkey_len);
         if (ret) RAISE_ERROR_MSG("Runtime get of UCX heap rkey failed (PE %d, ret %d)\n", i, ret);
@@ -350,8 +352,7 @@ int shmem_transport_fini(void)
     for (i = 0; i < shmem_internal_num_pes; i++) {
         ucp_rkey_destroy(shmem_transport_peers[i].data_rkey);
         ucp_rkey_destroy(shmem_transport_peers[i].heap_rkey);
-        ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep,
-                                                   UCP_EP_CLOSE_MODE_FLUSH);
+        ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep, 0);
         if (UCS_PTR_IS_PTR(pstatus)) {
             shmem_transport_ucx_complete_op(pstatus);
         }
