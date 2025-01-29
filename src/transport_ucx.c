@@ -332,6 +332,7 @@ int shmem_transport_startup(void)
 
 int shmem_transport_fini(void)
 {
+#if 0
     ucs_status_t status;
     int i;
     void *progress_out;
@@ -367,4 +368,5 @@ int shmem_transport_fini(void)
     ucp_config_release(shmem_transport_ucp_config);
 
     return 0;
+#endif
 }
