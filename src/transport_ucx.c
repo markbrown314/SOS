@@ -346,12 +346,12 @@ int shmem_transport_fini(void)
 
     /* Clean up peers table */
     for (i = 0; i < shmem_internal_num_pes; i++) {
-        //ucp_rkey_destroy(shmem_transport_peers[i].data_rkey);
-        //ucp_rkey_destroy(shmem_transport_peers[i].heap_rkey);
+        ucp_rkey_destroy(shmem_transport_peers[i].data_rkey);
+        ucp_rkey_destroy(shmem_transport_peers[i].heap_rkey);
         ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep,
                                                    UCP_EP_CLOSE_MODE_FLUSH);
         shmem_transport_ucx_complete_op(pstatus);
-        free(shmem_transport_peers[i].addr);
+        //free(shmem_transport_peers[i].addr);
     }
 
     free(shmem_transport_peers);
