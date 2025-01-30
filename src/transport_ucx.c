@@ -87,6 +87,10 @@ int shmem_transport_init(void)
     ucp_worker_attr_t worker_attr;
     ucs_thread_mode_t requested;
 
+    memset(&params, 0, sizeof(params));
+    memset(&worker_attr, 0, sizeof(worker_attr));
+    memset(&worker_params, 0, sizeof(worker_params));
+
     params.field_mask = UCP_PARAM_FIELD_FEATURES;
     params.features   = UCP_FEATURE_RMA | UCP_FEATURE_AMO32 | UCP_FEATURE_AMO64;
 
@@ -192,6 +196,7 @@ int shmem_transport_init(void)
         size_t len;
         int ret;
         ucp_mem_map_params_t params;
+        memset(&params, 0, sizeof(ucp_mem_map_params_t));
 
         params.field_mask = UCP_MEM_MAP_PARAM_FIELD_ADDRESS |
                             UCP_MEM_MAP_PARAM_FIELD_LENGTH  |
@@ -344,6 +349,7 @@ static ucs_status_t flush_ep(ucp_worker_h worker, ucp_ep_h ep)
     ucp_request_param_t param;
     void *request;
 
+    memset(&param, 0, sizeof(ucp_request_param_t));
     param.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK;
     param.cb.send      = flush_callback;
     request            = ucp_ep_flush_nbx(ep, &param);
