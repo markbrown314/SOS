@@ -263,6 +263,7 @@ int shmem_transport_startup(void)
     for (i = 0; i < shmem_internal_num_pes; i++) {
         ucs_status_t status;
         ucp_ep_params_t params;
+        memset(&params, 0, sizeof(ucp_ep_params_t));
         size_t rkey_len;
         void *rkey;
         uint8_t *addr_bytes;
