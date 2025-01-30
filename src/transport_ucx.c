@@ -334,6 +334,33 @@ int shmem_transport_startup(void)
     return 0;
 }
 
+static void flush_callback(void *request, ucs_status_t status, void *user_data)
+{
+}
+
+static ucs_status_t flush_ep(ucp_worker_h worker, ucp_ep_h ep)
+{
+    ucp_request_param_t param;
+    void *request;
+
+    param.op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK;
+    param.cb.send      = flush_callback;
+    request            = ucp_ep_flush_nbx(ep, &param);
+    if (request == NULL) {
+        return UCS_OK;
+    } else if (UCS_PTR_IS_ERR(request)) {
+        return UCS_PTR_STATUS(request);
+    } else {
+        ucs_status_t status;
+        do {
+            ucp_worker_progress(worker);
+            status = ucp_request_check_status(request);
+        } while (status == UCS_INPROGRESS);
+        ucp_request_release(request);
+        return status;
+    }
+}
+
 int shmem_transport_fini(void)
 {
     ucs_status_t status;
@@ -352,6 +379,7 @@ int shmem_transport_fini(void)
     for (i = 0; i < shmem_internal_num_pes; i++) {
         ucp_rkey_destroy(shmem_transport_peers[i].data_rkey);
         ucp_rkey_destroy(shmem_transport_peers[i].heap_rkey);
+        flush_ep(shmem_transport_ucp_worker, shmem_transport_peers[i].ep);
         ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep, 0);
         if (UCS_PTR_IS_PTR(pstatus)) {
             shmem_transport_ucx_complete_op(pstatus);
