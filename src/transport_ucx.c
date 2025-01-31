@@ -395,7 +395,7 @@ int shmem_transport_fini(void)
     for (i = 0; i < shmem_internal_num_pes; i++) {
         ucp_rkey_destroy(shmem_transport_peers[i].data_rkey);
         ucp_rkey_destroy(shmem_transport_peers[i].heap_rkey);
-        flush_ep(shmem_transport_ucp_worker, shmem_transport_peers[i].ep);
+        //flush_ep(shmem_transport_ucp_worker, shmem_transport_peers[i].ep);
         ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep, 0);
         if (UCS_PTR_IS_PTR(pstatus)) {
             shmem_transport_ucx_complete_op(pstatus);

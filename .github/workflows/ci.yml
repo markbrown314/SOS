@@ -522,7 +522,7 @@ jobs:
       # UCX
       - name: Cache UCX install
         id: cache-ucx
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ env.UCX_INSTALL_DIR }}
           key: ucx-${{ matrix.ucx_version}}-${{ env.OS_NAME }}
