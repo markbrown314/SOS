@@ -256,6 +256,11 @@ int shmem_transport_init(void)
     return 0;
 }
 
+static void err_handler_cb(void *arg, ucp_ep_h ep, ucs_status_t status) {
+    fprintf(stderr, "error not handled\n");
+    abort();
+}
+
 int shmem_transport_startup(void)
 {
     int i, ret;
@@ -298,6 +303,10 @@ int shmem_transport_startup(void)
 
         params.field_mask = UCP_EP_PARAM_FIELD_REMOTE_ADDRESS;
         params.address    = shmem_transport_peers[i].addr;
+        params.field_mask |= UCP_EP_PARAM_FIELD_ERR_HANDLING_MODE |
+                             UCP_EP_PARAM_FIELD_ERR_HANDLER;
+        params.err_handler.cb = err_handler_cb;
+        params.err_handler.arg = NULL;
 
         status = ucp_ep_create(shmem_transport_ucp_worker, &params, &shmem_transport_peers[i].ep);
         UCX_CHECK_STATUS(status);
