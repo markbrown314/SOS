@@ -114,6 +114,8 @@ SHMEM_INTERNAL_ENV_DEF(OFI_DISABLE_MULTIRAIL, bool, false, SHMEM_INTERNAL_ENV_CA
 #ifdef USE_UCX
 SHMEM_INTERNAL_ENV_DEF(PROGRESS_INTERVAL, long, 1000, SHMEM_INTERNAL_ENV_CAT_TRANSPORT,
                        "Polling interval for progress thread in microseconds (0 to disable)")
+SHMEM_INTERNAL_ENV_DEF(UCX_EP_CLOSE_MODE_FORCE, bool, false, SHMEM_INTERNAL_ENV_CAT_TRANSPORT,
+                       "Change endpoint close mode from flush to force without closing")
 #endif
 
 #ifdef ENABLE_PMI_MPI

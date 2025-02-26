@@ -251,6 +251,12 @@ int shmem_transport_init(void)
     return 0;
 }
 
+static void ucp_err_handler_cb(void *arg, ucp_ep_h ep, ucs_status_t status)
+{
+    RAISE_WARN_MSG("ignoring ucp error %s on ep %p\n", ucs_status_string(status), ep);
+    return;
+}
+
 int shmem_transport_startup(void)
 {
     int i, ret;
@@ -290,6 +296,15 @@ int shmem_transport_startup(void)
 
         params.field_mask = UCP_EP_PARAM_FIELD_REMOTE_ADDRESS;
         params.address    = shmem_transport_peers[i].addr;
+
+        // UCP_EP_CLOSE_MODE_FORCE requires an error handler
+        if (shmem_internal_params.UCX_EP_CLOSE_MODE_FORCE) {
+            params.err_mode = UCP_ERR_HANDLING_MODE_PEER;
+            params.err_handler.cb = ucp_err_handler_cb;
+            params.err_handler.arg = NULL;
+            params.field_mask |= UCP_EP_PARAM_FIELD_ERR_HANDLING_MODE | UCP_EP_PARAM_FIELD_ERR_HANDLER;
+        }
+            
 
         status = ucp_ep_create(shmem_transport_ucp_worker, &params, &shmem_transport_peers[i].ep);
         UCX_CHECK_STATUS(status);
@@ -335,10 +350,15 @@ int shmem_transport_fini(void)
     ucs_status_t status;
     int i;
     void *progress_out;
+    unsigned int ep_close_mode = UCP_EP_CLOSE_MODE_FLUSH;
 
     if (shmem_internal_params.PROGRESS_INTERVAL > 0) {
         __atomic_store_n(&shmem_transport_ucx_progress_thread_enabled, 0, __ATOMIC_RELEASE);
         pthread_join(shmem_transport_ucx_progress_thread, &progress_out);
+    }
+
+    if (shmem_internal_params.UCX_EP_CLOSE_MODE_FORCE) {
+        ep_close_mode = UCP_EP_CLOSE_MODE_FORCE;
     }
 
     /* Clean up contexts */
@@ -348,8 +368,7 @@ int shmem_transport_fini(void)
     for (i = 0; i < shmem_internal_num_pes; i++) {
         ucp_rkey_destroy(shmem_transport_peers[i].data_rkey);
         ucp_rkey_destroy(shmem_transport_peers[i].heap_rkey);
-        ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep,
-                                                   UCP_EP_CLOSE_MODE_FLUSH);
+        ucs_status_ptr_t pstatus = ucp_ep_close_nb(shmem_transport_peers[i].ep, ep_close_mode);
         shmem_transport_ucx_complete_op(pstatus);
         free(shmem_transport_peers[i].addr);
     }
