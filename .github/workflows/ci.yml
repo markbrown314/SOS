@@ -21,7 +21,7 @@ env:
 
 jobs:
   OFI:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -260,7 +260,7 @@ jobs:
           ${SOS_PM_POST}
 
 #  PMIx:
-#    runs-on: ubuntu-20.04
+#    runs-on: ubuntu-24.04
 #    strategy:
 #      fail-fast: false
 #      matrix:
@@ -477,13 +477,13 @@ jobs:
 #          ${{ matrix.sos_pm_post }}
 #
   UCX:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          - config_name: ucx-1.9.0
-            ucx_version: v1.9.0
+          - config_name: ucx-1.18.0
+            ucx_version: v1.18.0
             xpmem_version: master
         sos_config: [--enable-pmi-simple --disable-fortran,
                      --with-cma --enable-error-checking --enable-profiling
@@ -563,7 +563,7 @@ jobs:
           cat modules/tests-sos/test/unit/hello.log
 
   Portals4:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -582,8 +582,8 @@ jobs:
                      --disable-aslr-check --enable-pmi-simple,
                      --with-cma --enable-error-checking --enable-profiling
                      --enable-remote-virtual-addressing --enable-pmi-simple,
-                     --with-xpmem --enable-shr-atomics --enable-error-checking --enable-pmi-simple,
-                     --enable-pmi-mpi CC=mpicc --disable-fortran --with-hwloc=no]
+                     --with-xpmem --enable-shr-atomics --enable-error-checking --enable-pmi-simple]
+                     # --enable-pmi-mpi CC=mpicc --disable-fortran --with-hwloc=no]
     steps:
       - name: Checking OS version
         run: |
@@ -635,6 +635,7 @@ jobs:
         run: |
           cd repos/portals4
           ./autogen.sh
+          sed -i 's/^struct ptl_abort_state abort_state;/static struct ptl_abort_state abort_state;/' src/ib/ptl_gbl.h
           mkdir build; cd build
           ../configure --prefix=${PORTALS4_INSTALL_DIR} --enable-zero-mrs --enable-reliable-udp --disable-pmi-from-portals
           make -j
@@ -656,7 +657,7 @@ jobs:
           ${SOS_PM} -np 1 modules/tests-sos/test/unit/hello
 
   XPMEM_Only:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
