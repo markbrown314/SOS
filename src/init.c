@@ -549,10 +549,20 @@ shmem_internal_heap_postinit(void)
     abort();
 }
 
+void shmem_test_abort(int signum)
+{
+    shmem_runtime_abort(signum, PACKAGE_NAME " test timeout");
+}
+
 int
 shmem_internal_init(int tl_requested, int *tl_provided)
 {
     int ret;
+
+    if (signal(10, shmem_test_abort) == SIG_ERR) {
+        fprintf(stderr, "can't resgister tesrt signal\n");
+        abort();
+    }
 
     ret = shmem_internal_heap_preinit(tl_requested, tl_provided);
     if (ret) goto cleanup;
