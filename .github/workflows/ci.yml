@@ -235,7 +235,7 @@ jobs:
           cd build
           make check TESTS= -j
           ${{ matrix.env_setup }}
-          SHMEM_DEBUG=1 SHMEM_INFO=1 SHMEM_OFI_PROVIDER=sockets make VERBOSE=1 TEST_RUNNER="${SOS_PM} -np 2" check
+          SHMEM_DEBUG=1 SHMEM_INFO=1 SHMEM_OFI_PROVIDER=sockets make VERBOSE=1 TEST_RUNNER="timeout 3m ${SOS_PM} -np 2" check
           cat modules/tests-sos/test/unit/hello.log
       - name: Test RPM (${{ matrix.rpm_build }})
         if: ${{ matrix.rpm_build }}
