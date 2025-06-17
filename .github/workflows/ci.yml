@@ -21,7 +21,7 @@ env:
 
 jobs:
   OFI:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -262,7 +262,7 @@ jobs:
           ${SOS_PM_POST}
 
 #  PMIx:
-#    runs-on: ubuntu-22.04
+#    runs-on: ubuntu-24.04
 #    strategy:
 #      fail-fast: false
 #      matrix:
@@ -479,7 +479,7 @@ jobs:
 #          ${{ matrix.sos_pm_post }}
 #
   UCX:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -567,7 +567,7 @@ jobs:
           cat modules/tests-sos/test/unit/hello.log
 
   Portals4:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -664,7 +664,7 @@ jobs:
           ${SOS_PM} -np 1 modules/tests-sos/test/unit/hello
 
   XPMEM_Only:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
