@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 
 CORE_DIR="/tmp/core"
 CORE_OUTPUT=$(mktemp /tmp/debug.XXXXXX)
@@ -8,6 +7,7 @@ CORE_ARCHIVE_DUMP=${CORE_ARCHIVE}/core_files
 
 case $1 in
   init)
+    echo "notice: enabling core dump artifacts support"
     mkdir ${CORE_ARCHIVE} ${CORE_DIR}
     if [ ! -e "${CORE_ARCHIVE}" ] || [ ! -e "${CORE_DIR}" ]; then
       echo "error: creating core archive"
@@ -17,11 +17,8 @@ case $1 in
     sudo bash -c 'echo '${CORE_DIR}'/%E.%p.core > /proc/sys/kernel/core_pattern'
     echo "set debuginfod enabled on" > ${HOME}/.gdbinit
   ;;
-  inject-fail)
-    # force hello unit test to hang for unit testing
-    echo -e "#include <stdlib.h>\nint main(void) { while(1) {}; return 0;}" > ${GITHUB_WORKSPACE}/modules/tests-sos/test/unit/hello.c
-  ;;
   scan)
+    echo "notice: scanning for core dump files"
     mkdir -p ${CORE_ARCHIVE} ${CORE_ARCHIVE_DUMP}
 
     if [ ! -e "${CORE_ARCHIVE}" ] || [ ! -e "${CORE_ARCHIVE_DUMP}" ]; then
@@ -43,10 +40,11 @@ case $1 in
     done
 
     if [ "${core_list}" == "" ]; then
-      echo "notice: no core dumps found"
+      echo "notice: no core dump files found"
       exit 0
     fi
 
+    echo "notice: core dump files detected"
     cat ${CORE_OUTPUT}
 
     cd ${GITHUB_WORKSPACE}

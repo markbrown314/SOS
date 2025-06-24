@@ -241,7 +241,6 @@ jobs:
       - name: Configure Core Analysis (${{ matrix.sos_config }})
         run: |
           bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh init
-          #bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh inject-fail
       - name: Test SOS (${{ matrix.sos_config }})
         run: |
           cd build
@@ -593,7 +592,6 @@ jobs:
       - name: Configure Core Analysis (${{ matrix.sos_config }})
         run: |
           bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh init
-          #bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh inject-fail
       - name: Test SOS (${{ matrix.sos_config }})
         continue-on-error: true
         run: |
@@ -713,12 +711,13 @@ jobs:
       - name: Configure Core Analysis (${{ matrix.sos_config }})
         run: |
           bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh init
-          #bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh inject-fail
       - name: Test SOS (${{ matrix.name }})
         continue-on-error: true
         run: |
           cd build
           make check TESTS= -j
+          ulimit -c unlimited
+          ulimit -a
           ${SOS_PM} -np 1 modules/tests-sos/test/unit/hello
 
   XPMEM_Only:
@@ -777,7 +776,6 @@ jobs:
       - name: Configure Core Analysis (${{ matrix.sos_config }})
         run: |
           bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh init
-          #bash ${GITHUB_WORKSPACE}/.github/scripts/scan_core.sh inject-fail
       - name: Test SOS (${{ matrix.name }})
         run: |
           cd build
