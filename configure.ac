@@ -340,6 +340,12 @@ AC_ARG_ENABLE([ofi-hmem],
 AS_IF([test "$enable_ofi_hmem" = "yes"],
       [AC_DEFINE([USE_FI_HMEM], [1], [If defined, the OFI transport will enable FI_HMEM.])])
 
+AC_ARG_ENABLE([multi-init],
+    [AS_HELP_STRING([--enable-multi-init],
+                    [Enable multiple initialization and finalization support. (default: disabled)])])
+AS_IF([test "$enable_multi_init" = "yes"],
+      [AC_DEFINE([USE_MULTI_INIT], [1], [If defined, multiple init will be supported.])])
+
 PKG_INSTALLDIR()
 
 dnl check for programs
