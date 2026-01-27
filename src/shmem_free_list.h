@@ -17,7 +17,7 @@
 #define SHMEM_FREE_QUEUE_H
 
 #include <stdint.h>
-
+#include <sys/mman.h>
 #include "shmem_internal.h"
 
 struct shmem_free_list_item_t {

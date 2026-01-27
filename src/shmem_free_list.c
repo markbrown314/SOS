@@ -53,7 +53,7 @@ shmem_free_list_destroy(shmem_free_list_t *fl)
     alloc = fl->allocs;
     while (NULL != alloc) {
         next = alloc->next;
-        free(alloc);
+        shmem_internal_free(alloc);
         alloc = next;
     }
 
@@ -73,9 +73,13 @@ shmem_free_list_more(shmem_free_list_t *fl)
 
     num_elements = 2;
 
-    buf = malloc(sizeof(shmem_free_list_alloc_t) +
+    buf = shmem_internal_shmalloc(sizeof(shmem_free_list_alloc_t) +
                  num_elements * fl->element_size);
     if (NULL == buf) return 1;
+
+    if (shmem_internal_params.BOUNCE_MLOCK) {
+        mlock(buf, sizeof(shmem_free_list_alloc_t) + num_elements * fl->element_size);
+    }
 
     header = (shmem_free_list_alloc_t*) buf;
     first = item = (shmem_free_list_item_t*) (header + 1);
