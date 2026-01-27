@@ -126,3 +126,5 @@ SHMEM_INTERNAL_ENV_DEF(MPI_THREAD_LEVEL, string, "MPI_THREAD_SINGLE", SHMEM_INTE
 SHMEM_INTERNAL_ENV_DEF(BACKTRACE, string, "", SHMEM_INTERNAL_ENV_CAT_OTHER,
                        "Specify the mechanism to use for backtracing on failure")
 
+SHMEM_INTERNAL_ENV_DEF(BOUNCE_MLOCK, bool, false, SHMEM_INTERNAL_ENV_CAT_OTHER,
+                       "Lock bounce buffer memory preventing buffers from being paged out to swap")

@@ -22,10 +22,12 @@
 #include "shmem.h"
 #include "shmem_free_list.h"
 
+#define NUM_ELEMENTS	2
 
 shmem_free_list_t*
 shmem_free_list_init(unsigned int element_size,
-                     shmem_free_list_item_init_fn_t init_fn)
+                     shmem_free_list_item_init_fn_t init_fn,
+		     size_t max_elements)
 {
     int ret;
     shmem_free_list_t *fl = (shmem_free_list_t*) calloc(1, sizeof(shmem_free_list_t));
@@ -34,6 +36,10 @@ shmem_free_list_init(unsigned int element_size,
     fl->element_size = element_size;
     fl->init_fn = init_fn;
     fl->nalloc = 0;
+    fl->alloc_size = sizeof(shmem_free_list_alloc_t) + NUM_ELEMENTS * fl->element_size;
+    fl->pool_size = fl->alloc_size * max_elements;
+    fl->pool = shmem_internal_shmalloc(fl->pool_size);
+    fl->pool_ofs = 0;
     SHMEM_MUTEX_INIT(fl->lock);
     ret = shmem_free_list_more(fl);
     if (0 != ret) {
@@ -48,14 +54,9 @@ shmem_free_list_init(unsigned int element_size,
 void
 shmem_free_list_destroy(shmem_free_list_t *fl)
 {
-    shmem_free_list_alloc_t *alloc, *next;
-
-    alloc = fl->allocs;
-    while (NULL != alloc) {
-        next = alloc->next;
-        free(alloc);
-        alloc = next;
-    }
+    shmem_internal_free(fl->pool);
+    fl->pool = NULL;
+    fl->pool_ofs = 0;
 
     SHMEM_MUTEX_DESTROY(fl->lock);
 }
@@ -64,18 +65,25 @@ shmem_free_list_destroy(shmem_free_list_t *fl)
 int
 shmem_free_list_more(shmem_free_list_t *fl)
 {
-    size_t page_size = 4096 - sizeof(shmem_free_list_alloc_t);
-    int num_elements = (fl->element_size < page_size) ? page_size / fl->element_size : 1;
     shmem_free_list_item_t *item, *first, *next, *last = NULL;
     shmem_free_list_alloc_t *header;
     char *buf;
-    int i;
+    uint64_t i;
+    uint64_t num_elements = NUM_ELEMENTS;
 
-    num_elements = 2;
 
-    buf = malloc(sizeof(shmem_free_list_alloc_t) +
-                 num_elements * fl->element_size);
-    if (NULL == buf) return 1;
+    if (fl->pool_ofs >= fl->pool_size)
+    {
+	    fprintf(stderr, "[%d] pool memory exhausted\n", shmem_internal_my_pe);
+	    return 1;
+    }
+
+    buf = &fl->pool[fl->pool_ofs];
+    fl->pool_ofs += fl->alloc_size;
+
+    if (shmem_internal_params.BOUNCE_MLOCK) {
+        mlock(buf, sizeof(shmem_free_list_alloc_t) + num_elements * fl->element_size);
+    }
 
     header = (shmem_free_list_alloc_t*) buf;
     first = item = (shmem_free_list_item_t*) (header + 1);
