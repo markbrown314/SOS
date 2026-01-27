@@ -366,6 +366,14 @@ shmem_internal_heap_postinit(void)
     int teams_initialized     = 0;
     int enable_node_ranks     = 0;
 
+#if 0
+    if (shmem_internal_my_pe == 0){
+	    volatile bool spin = true;
+	    fprintf(stderr, "waiting %d.....\n", getpid());
+	    while (spin) {
+	    }
+    }
+#endif
     /* create symmetric heap */
     ret = shmem_internal_symmetric_init();
     if (0 != ret) {
@@ -381,6 +389,10 @@ shmem_internal_heap_postinit(void)
               shmem_internal_my_pe,
               shmem_internal_heap_base, shmem_internal_heap_length,
               shmem_internal_data_base, shmem_internal_data_length);
+
+    if (shmem_internal_params.BOUNCE_MLOCK) {
+        DEBUG_MSG("Bounce buffer locking enabled\n");
+    }
 
 #ifdef HAVE_SCHED_GETAFFINITY
 #ifdef USE_HWLOC

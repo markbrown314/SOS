@@ -1811,7 +1811,8 @@ static int shmem_transport_ofi_ctx_init(shmem_transport_ctx_t *ctx, int id)
         ctx->bounce_buffers =
             shmem_free_list_init(sizeof(shmem_transport_ofi_bounce_buffer_t) +
                                  shmem_transport_ofi_bounce_buffer_size,
-                                 init_bounce_buffer);
+                                 init_bounce_buffer,
+				 shmem_transport_ofi_max_bounce_buffers);
     }
     else {
         ctx->options &= ~SHMEMX_CTX_BOUNCE_BUFFER;
