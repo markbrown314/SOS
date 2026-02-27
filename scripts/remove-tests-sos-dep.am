@@ -1,0 +1,3 @@
+all:
+	@echo Warning: tests-sos test suite not installed
+	@echo Warning: If tests are needed please refer to README.md for further instructions

@@ -154,6 +154,9 @@ jobs:
           - config_name: Without Non-fetch AMO
             sos_config: --disable-nonfetch-amo --enable-pmi-simple
             libfabric_version: v2.1.x
+          - config_name: Disable tests-sos
+            sos_config: --enable-pmi-simple
+            disable_tests_sos: true
                      
     name: OFI ${{ matrix.libfabric_version }} (${{ matrix.config_name }})
 
@@ -231,7 +234,12 @@ jobs:
       # SOS
       - name: Build SOS (${{ matrix.sos_config }})
         run: |
-          git submodule update --remote
+          if [ "${{ matrix.disable_tests_sos }}" == "true" ]; then
+             rm -r modules/tests-sos
+             scripts/remove-tests-sos-dep.sh
+          else
+             git submodule update --remote
+          fi
           ./autogen.sh
           mkdir build; cd build
           ../configure --prefix=${SOS_INSTALL_DIR} --with-ofi=${LIBFABRIC_INSTALL_DIR} ${{ matrix.sos_config }}
@@ -249,7 +257,9 @@ jobs:
           ulimit -a
           SHMEM_DEBUG=1 SHMEM_INFO=1 SHMEM_OFI_PROVIDER=sockets FI_PROVIDER=sockets \
              make VERBOSE=1 TEST_RUNNER="${SOS_PM} -np 2 timeout --signal=ABRT 15m" check
-          cat modules/tests-sos/test/unit/hello.log
+             if [ "${{ matrix.disable_tests_sos }}" != "true" ]; then
+                cat modules/tests-sos/test/unit/hello.log
+             fi
       - name: Scanning for Core Dumps (${{ matrix.sos_config }})
         if: always()
         run: |
