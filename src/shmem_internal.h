@@ -50,6 +50,7 @@ extern int shmem_external_heap_device_type;
 extern int shmem_external_heap_device;
 
 extern unsigned int shmem_internal_rand_seed;
+extern uint64_t	shmem_internal_retry_cntr;
 
 #ifdef USE_HWLOC
 #include <hwloc.h>
@@ -576,6 +577,11 @@ static inline double shmem_internal_wtime(void)
     wtime += (double)tv.tv_usec / 1.0e6;
 #endif
     return wtime;
+}
+
+static inline uint64_t shmem_internal_get_retry_cntr(void)
+{
+    return shmem_internal_retry_cntr;
 }
 
 /* Utility functions */

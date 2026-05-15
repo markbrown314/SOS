@@ -15,6 +15,7 @@ dnl
 #endif
 
 SHMEM_FUNCTION_ATTRIBUTES double SHPRE()shmemx_wtime(void);
+SHMEM_FUNCTION_ATTRIBUTES uint64_t SHPRE()shmemx_get_retry_cntr(void);
 SHMEM_FUNCTION_ATTRIBUTES char* SHPRE()shmemx_nodename(void);
 
 SHMEM_FUNCTION_ATTRIBUTES void SHPRE()shmemx_getmem_ct(shmemx_ct_t ct, void *target, const void *source, size_t len, int pe);

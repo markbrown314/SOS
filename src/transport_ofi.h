@@ -574,6 +574,7 @@ int try_again(shmem_transport_ctx_t *ctx, const int ret, uint64_t *polled) {
                 }
             }
 
+	    shmem_internal_retry_cntr++;
             shmem_transport_probe();
 
             (*polled)++;

@@ -95,6 +95,7 @@ int shmem_internal_initialized_with_start_pes = 0;
 int shmem_internal_global_exit_called = 0;
 
 int shmem_internal_thread_level;
+uint64_t shmem_internel_retry_cntr = 0;
 
 unsigned int shmem_internal_rand_seed;
 

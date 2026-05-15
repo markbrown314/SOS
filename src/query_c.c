@@ -41,6 +41,9 @@
 #pragma weak shmemx_wtime = pshmemx_wtime
 #define shmemx_wtime pshmemx_wtime
 
+#pragma weak shmemx_get_retry_cntr = pshmemx_get_retry_cntr
+#define shmemx_retry_get_cntr pshmemx_get_retry_cntr
+
 #pragma weak shmem_pcontrol = pshmem_pcontrol
 #define shmem_pcontrol pshmem_pcontrol
 
@@ -91,6 +94,14 @@ shmemx_wtime(void)
     return shmem_internal_wtime();
 }
 
+
+double SHMEM_FUNCTION_ATTRIBUTES
+shmemx_get_retry_cntr(void)
+{
+    SHMEM_ERR_CHECK_INITIALIZED();
+
+    return shmem_internal_get_retry_cntr();
+}
 
 void SHMEM_FUNCTION_ATTRIBUTES
 shmem_pcontrol(int level, ...)
