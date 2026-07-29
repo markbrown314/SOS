@@ -1000,15 +1000,24 @@ shmem_internal_scan_linear(void *target, const void *source, size_t count, size_
     long completion = 0;
     int free_source = 0;
 
-
+    /* A zero-count scan has no data to move and no result to produce, so exit
+     * before allocating the in-place temporary or entering any of the pSync
+     * handshakes below.  count is identical on every PE in the team, so all
+     * PEs take this return together and the collective stays matched. */
     if (count == 0) return;
-    
+
     int pe, i;
-    
+
      /* In-place scan: copy source data to a temporary buffer so we can use
-     * the symmetric buffer to accumulate scan data. */
+     * the symmetric buffer to accumulate scan data.  The temporary must be
+     * allocated from the symmetric heap: it is used as the source of the
+     * shmem_internal_atomicv() below, and the transport registers the source
+     * buffer (shmem_transport_ofi_get_mr) whenever the transfer does not fit
+     * the inject path -- which is always the case under --disable-ofi-inject,
+     * where max_buffered_send is 0.  A malloc'd buffer fails there with
+     * "address (%p) outside of symmetric areas". */
     if (target == source) {
-        void *tmp = malloc(count * type_size);
+        void *tmp = shmem_internal_shmalloc(count * type_size);
 
         if (NULL == tmp)
             RAISE_ERROR_MSG("Unable to allocate %zub temporary buffer\n", count*type_size);
@@ -1094,15 +1103,15 @@ shmem_internal_scan_linear(void *target, const void *source, size_t count, size_
                               PE_start, SHM_INTERNAL_SUM, SHM_INTERNAL_LONG);
                               
         SHMEM_WAIT(pSync, 0);
-        
+
         /* reset pSync */
         shmem_internal_put_scalar(SHMEM_CTX_DEFAULT, pSync, &zero, sizeof(zero), shmem_internal_my_pe);
         SHMEM_WAIT_UNTIL(pSync, SHMEM_CMP_EQ, 0);
-        
+
     }
-    
+
     if (free_source)
-        free((void *)source);
+        shmem_internal_free((void *)source);
 
 }
 
@@ -1117,11 +1126,18 @@ shmem_internal_scan_ring(void *target, const void *source, size_t count, size_t 
     long zero = 0, one = 1;
     long completion = 0;
     int free_source = 0;
-    
+
+    /* A zero-count scan has no data to move and no result to produce, so exit
+     * before allocating the in-place temporary or entering any of the pSync
+     * handshakes below.  count is identical on every PE in the team, so all
+     * PEs take this return together and the collective stays matched. */
+    if (count == 0) return;
+
     /* In-place scan: copy source data to a temporary buffer so we can use
-     * the symmetric buffer to accumulate scan data. */
+     * the symmetric buffer to accumulate scan data.  Must come from the
+     * symmetric heap; see the matching comment in shmem_internal_scan_linear. */
     if (target == source) {
-        void *tmp = malloc(count * type_size);
+        void *tmp = shmem_internal_shmalloc(count * type_size);
 
         if (NULL == tmp)
             RAISE_ERROR_MSG("Unable to allocate %zub temporary buffer\n", count*type_size);
@@ -1133,9 +1149,6 @@ shmem_internal_scan_ring(void *target, const void *source, size_t count, size_t 
         shmem_internal_sync(PE_start, PE_stride, PE_size, pSync + 2);
     }
 
-
-    if (count == 0) return;
-    
     int pe, i;
 
     if (PE_start == shmem_internal_my_pe) {
@@ -1202,9 +1215,9 @@ shmem_internal_scan_ring(void *target, const void *source, size_t count, size_t 
         shmem_internal_atomic(SHMEM_CTX_DEFAULT, pSync, &one, sizeof(one),
                               PE_start, SHM_INTERNAL_SUM, SHM_INTERNAL_LONG);
     }
-    
+
     if (free_source)
-        free((void *)source);
+        shmem_internal_free((void *)source);
 
 }
 /*****************************************
