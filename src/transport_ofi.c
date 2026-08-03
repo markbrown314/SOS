@@ -1688,11 +1688,23 @@ static int shmem_transport_ofi_target_ep_init(void)
 #if ENABLE_TARGET_CNTR
     info->p_info->caps |= FI_RMA_EVENT;
 #endif
+#ifdef USE_FI_HMEM
+    /* query_for_fabric() asked for FI_HMEM, but these assignments overwrite
+     * caps wholesale.  FI_HMEM must survive into fi_endpoint(): providers latch
+     * device-memory support off the endpoint's caps (the CXI provider sets
+     * txc->hmem from tx_attr->caps).  Without it, cxip_txc_copy_from_hmem()
+     * degenerates to a plain memcpy and the CPU dereferences a device pointer,
+     * so any RMA with a device-resident local buffer segfaults. */
+    info->p_info->caps |= FI_HMEM;
+#endif
     info->p_info->tx_attr->op_flags = 0;
     info->p_info->mode = 0;
     info->p_info->tx_attr->mode = 0;
     info->p_info->rx_attr->mode = 0;
     info->p_info->tx_attr->caps = FI_RMA | FI_ATOMIC;
+#ifdef USE_FI_HMEM
+    info->p_info->tx_attr->caps |= FI_HMEM;
+#endif
     info->p_info->rx_attr->caps = info->p_info->caps;
 
     ret = fi_endpoint(shmem_transport_ofi_domainfd,
@@ -1753,6 +1765,13 @@ static int shmem_transport_ofi_ctx_init(shmem_transport_ctx_t *ctx, int id)
 
     info->p_info->ep_attr->tx_ctx_cnt = shmem_transport_ofi_stx_max > 0 ? FI_SHARED_CONTEXT : 0;
     info->p_info->caps = FI_RMA | FI_WRITE | FI_READ | FI_ATOMIC | FI_RECV;
+#ifdef USE_FI_HMEM
+    /* This is the endpoint that issues puts/atomics, so FI_HMEM matters most
+     * here: it is what lets the provider stage a device-resident local buffer
+     * through its own bounce buffer instead of memcpy'ing from it on the CPU.
+     * See the matching comment in shmem_transport_ofi_target_ep_init(). */
+    info->p_info->caps |= FI_HMEM;
+#endif
     info->p_info->tx_attr->op_flags = FI_DELIVERY_COMPLETE;
     info->p_info->mode = 0;
     info->p_info->tx_attr->mode = 0;
