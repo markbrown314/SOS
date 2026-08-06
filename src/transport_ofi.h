@@ -69,7 +69,7 @@ extern long                             shmem_transport_ofi_get_poll_limit;
 extern size_t                           shmem_transport_ofi_max_buffered_send;
 extern size_t                           shmem_transport_ofi_max_msg_size;
 extern size_t                           shmem_transport_ofi_bounce_buffer_size;
-extern long                             shmem_transport_ofi_max_bounce_buffers;
+extern size_t                             shmem_transport_ofi_max_bounce_buffers;
 
 extern pthread_mutex_t                  shmem_transport_ofi_progress_lock;
 
@@ -436,7 +436,7 @@ void shmem_transport_ofi_drain_cq(shmem_transport_ctx_t *ctx)
                                      (shmem_transport_ofi_bounce_buffer_t *) frag);
                 ctx->completed_bb_cntr++;
             } else {
-                RAISE_ERROR_STR("Unrecognized completion object");
+                RAISE_ERROR_MSG("[%d] Unrecognized completion object %p %x mtofs %p\n", shmem_internal_my_pe, frag, frag->mytype, &frag->mytype);
             }
         }
 
@@ -473,6 +473,10 @@ shmem_transport_ofi_bounce_buffer_t * create_bounce_buffer(shmem_transport_ctx_t
     if (NULL == buff)
         RAISE_ERROR_STR("Bounce buffer allocation failed");
 
+    if (buff->frag.mytype != SHMEM_TRANSPORT_OFI_TYPE_BOUNCE) {
+	RAISE_ERROR_STR("Bounce buffer allocation failed");
+    }
+
     shmem_internal_assert(buff->frag.mytype == SHMEM_TRANSPORT_OFI_TYPE_BOUNCE);
 
     memcpy(buff->data, source, len);
@@ -504,28 +508,8 @@ void shmem_transport_put_quiet(shmem_transport_ctx_t* ctx)
      * reverse order: first the fid_cntr event counter, then the put issued
      * counter.  We'll want to preserve this property in the future.
      */
-    uint64_t success, fail, cnt, cnt_new;
-    long poll_count = 0;
-    while (poll_count < shmem_transport_ofi_put_poll_limit ||
-           shmem_transport_ofi_put_poll_limit < 0) {
-        success = fi_cntr_read(ctx->put_cntr);
-        fail = fi_cntr_readerr(ctx->put_cntr);
-        cnt = SHMEM_TRANSPORT_OFI_CNTR_READ(&ctx->pending_put_cntr);
+    uint64_t cnt, cnt_new;
 
-        shmem_transport_probe();
-
-        if (success < cnt && fail == 0) {
-            SHMEM_TRANSPORT_OFI_CTX_UNLOCK(ctx);
-            SPINLOCK_BODY();
-            SHMEM_TRANSPORT_OFI_CTX_LOCK(ctx);
-        } else if (fail) {
-            RAISE_ERROR_MSG("Operations completed in error (%" PRIu64 ")\n", fail);
-        } else {
-            SHMEM_TRANSPORT_OFI_CTX_UNLOCK(ctx);
-            return;
-        }
-        poll_count++;
-    }
     cnt_new = SHMEM_TRANSPORT_OFI_CNTR_READ(&ctx->pending_put_cntr);
     do {
         cnt = cnt_new;
@@ -965,31 +949,10 @@ void shmem_transport_get_wait(shmem_transport_ctx_t* ctx)
      * reverse order: first the fid_cntr event counter, then the get issued
      * counter.  We'll want to preserve this property in the future.
      */
-    uint64_t success, fail, cnt, cnt_new;
-    long poll_count = 0;
+    uint64_t cnt, cnt_new;
 
     SHMEM_TRANSPORT_OFI_CTX_LOCK(ctx);
 
-    while (poll_count < shmem_transport_ofi_get_poll_limit ||
-           shmem_transport_ofi_get_poll_limit < 0) {
-        success = fi_cntr_read(ctx->get_cntr);
-        fail = fi_cntr_readerr(ctx->get_cntr);
-        cnt = SHMEM_TRANSPORT_OFI_CNTR_READ(&ctx->pending_get_cntr);
-
-        shmem_transport_probe();
-
-        if (success < cnt && fail == 0) {
-            SHMEM_TRANSPORT_OFI_CTX_UNLOCK(ctx);
-            SPINLOCK_BODY();
-            SHMEM_TRANSPORT_OFI_CTX_LOCK(ctx);
-        } else if (fail) {
-            RAISE_ERROR_MSG("Operations completed in error (%" PRIu64 ")\n", fail);
-        } else {
-            SHMEM_TRANSPORT_OFI_CTX_UNLOCK(ctx);
-            return;
-        }
-        poll_count++;
-    }
     cnt_new = SHMEM_TRANSPORT_OFI_CNTR_READ(&ctx->pending_get_cntr);
     do {
         cnt = cnt_new;
