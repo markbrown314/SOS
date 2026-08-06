@@ -285,6 +285,31 @@ extern fi_addr_t *addr_table;
 #define GET_MR_DESC_ADDR(index) NULL
 #endif
 
+/* True when addr lies in the device-resident external heap, i.e. when the
+ * pointer must not be dereferenced by the CPU.
+ *
+ * fi_inject_write() and fi_inject_atomic() take no descriptor, so a provider
+ * has no way to learn that the local buffer is device memory.  The rxm
+ * provider stages such a transfer through a host buffer via
+ * rxm_ep_rma_emulate_inject(), which hardcodes .desc = NULL, so
+ * rxm_copy_hmem() falls back to iface FI_HMEM_SYSTEM and memcpy()s straight
+ * from the device pointer -- SIGSEGV.  (FI_OFI_RXM_DETECT_HMEM_IFACE=1 does
+ * not help: that probe is only consulted where a desc array is present.)
+ *
+ * Callers use this to skip the inject path for device buffers and take a
+ * descriptor-carrying fi_writemsg()/fi_atomicmsg() instead. */
+static inline
+int shmem_transport_ofi_is_dev_mem(const void *addr) {
+#ifdef USE_FI_HMEM
+    return shmem_external_heap_pre_initialized &&
+           (void*) addr >= shmem_external_heap_base &&
+           (uint8_t*) addr < (uint8_t*) shmem_external_heap_base + shmem_external_heap_length;
+#else
+    (void) addr;
+    return 0;
+#endif
+}
+
 struct shmem_transport_ofi_frag_t {
     shmem_free_list_item_t item;
     uint8_t mytype;
@@ -677,7 +702,16 @@ void shmem_transport_put_nb(shmem_transport_ctx_t* ctx, void *target, const void
 
     shmem_internal_assert(completion != NULL);
 
-    if (len <= shmem_transport_ofi_max_buffered_send) {
+    /* A device-resident source cannot use either of the two short paths: the
+     * inject path passes no descriptor, and the bounce buffer path memcpy()s
+     * from source on the CPU.  fi_write() in put_large carries the external
+     * heap descriptor, so the provider handles the device buffer itself. */
+    if (shmem_transport_ofi_is_dev_mem(source)) {
+
+        shmem_transport_ofi_put_large(ctx, target, source, len, pe);
+        (*completion)++;
+
+    } else if (len <= shmem_transport_ofi_max_buffered_send) {
 
         shmem_transport_put_scalar(ctx, target, source, len, pe);
 
@@ -873,7 +907,10 @@ static inline
 void shmem_transport_put_nbi(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
                              int pe)
 {
-    if (len <= shmem_transport_ofi_max_buffered_send) {
+    /* See shmem_transport_put_nb: the inject path carries no descriptor, so a
+     * device-resident source must go through fi_write() instead. */
+    if (len <= shmem_transport_ofi_max_buffered_send &&
+        !shmem_transport_ofi_is_dev_mem(source)) {
 
         shmem_transport_put_scalar(ctx, target, source, len, pe);
 
@@ -1162,8 +1199,14 @@ void shmem_transport_atomicv(shmem_transport_ctx_t* ctx, void *target, const voi
 
     shmem_transport_ofi_get_mr(target, pe, &addr, &key);
 
+    /* As in shmem_transport_put_nb, a device-resident source can use neither
+     * the inject path (fi_inject_atomic takes no descriptor) nor the bounce
+     * buffer path (it memcpy()s from source on the CPU).  Fall through to the
+     * chunked fi_atomic() loop, which passes the external heap descriptor. */
+    int source_is_dev_mem = shmem_transport_ofi_is_dev_mem(source);
+
     if ( full_len <= MIN(shmem_transport_ofi_max_buffered_send,
-                         max_atomic_size)) {
+                         max_atomic_size) && !source_is_dev_mem) {
 
         polled = 0;
 
@@ -1182,7 +1225,7 @@ void shmem_transport_atomicv(shmem_transport_ctx_t* ctx, void *target, const voi
 
     } else if (full_len <=
                MIN(shmem_transport_ofi_bounce_buffer_size, max_atomic_size) &&
-               ctx->bounce_buffers) {
+               ctx->bounce_buffers && !source_is_dev_mem) {
 
         shmem_transport_ofi_bounce_buffer_t *buff =
             create_bounce_buffer(ctx, source, full_len);
